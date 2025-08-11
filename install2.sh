@@ -41,4 +41,5 @@ do
 done
 
 echo "Starting service..."
+sleep 3
 $optio node service start
