@@ -32,5 +32,5 @@ $optio node activate
 # INSTALL SERVICE
 $optio node service install
 echo "Installing service..."
-sleep 3
+sleep 5
 $optio node service start
