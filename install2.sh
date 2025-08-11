@@ -1,45 +1,48 @@
 #!/usr/bin/env sh
-# installs the Optio Node CLI and default node instance
-set -e
+# Installs the Optio Node CLI and default node instance (system-safe)
+set -eu
 
-# DOWNLOAD
-optio="$HOME/optio/library/node/optio"
+# --- sudo helper ---
+if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo"; fi
+
+# --- DOWNLOAD to /usr/local/bin ---
 download_url="https://static.optionetwork.io/node/linux/releases/1.8.2/optio"
-curl $download_url -o $optio --create-dirs
-chmod +x $optio
+tmp="$(mktemp)"
+curl -fsSL "$download_url" -o "$tmp"
+$SUDO install -Dm755 "$tmp" /usr/local/bin/optio
+rm -f "$tmp"
+# (SELinux contexts, if applicable)
+($SUDO restorecon -v /usr/local/bin/optio 2>/dev/null || true)
 
-# ADD ALIAS
-alias='alias optio="~/optio/library/node/optio"'
-if ! grep -Fxq "$alias" ~/.bashrc; then
-    echo $alias >> ~/.bashrc
-fi
-# source ~/.bashrc
+# sanity check
+/usr/local/bin/optio version
 
-$optio version
-
-# INITIALIZE
+# --- INITIALIZE (allow exit 99) ---
 set +e
-$optio node init -e mainnet
+/usr/local/bin/optio node init -e mainnet
 exit_code=$?
 set -e
-if [ "$exit_code" != 0 ] && [ $exit_code != 99 ]; then
+if [ "$exit_code" != "0" ] && [ "$exit_code" != "99" ]; then
+  echo "Init failed with exit code $exit_code" >&2
   exit 1
 fi
 
-# ACTIVATE
-$optio node activate
+# --- ACTIVATE ---
+/usr/local/bin/optio node activate
 
-# INSTALL SERVICE
-echo "Installing service..."
-$optio node service install
+# --- INSTALL SERVICE (system unit) ---
+if ! $SUDO /usr/local/bin/optio node service install --wait; then
+  echo "Warning: service install reported a non-zero exit code; continuing..." >&2
+fi
 
-echo "Waiting for service to be registered..."
-until $optio node service status &>/dev/null
-do
-    echo "Waiting for service..."
-    sleep 1
-done
+# Force ExecStart to system-safe path (avoids /root path issues)
+$SUDO systemctl edit optio.node.service <<'EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/local/bin/optio node start
+EOF
 
-echo "Starting service..."
-sleep 3
-$optio node service start
+# Reload, enable, start, and show status
+$SUDO systemctl daemon-reload
+$SUDO systemctl enable optio.node.service --now
+$SUDO systemctl status optio.node.service --no-pager -l || true
