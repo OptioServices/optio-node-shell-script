@@ -30,7 +30,15 @@ fi
 $optio node activate
 
 # INSTALL SERVICE
-$optio node service install --wait
 echo "Installing service..."
-sleep 3
+$optio node service install
+
+echo "Waiting for service to be registered..."
+until $optio node service status &>/dev/null
+do
+    echo "Waiting for service..."
+    sleep 1
+done
+
+echo "Starting service..."
 $optio node service start
