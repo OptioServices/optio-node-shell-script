@@ -30,7 +30,7 @@ fi
 $optio node activate
 
 # INSTALL SERVICE
-$optio node service install
+$optio node service install --wait
 echo "Installing service..."
-sleep 5
+sleep 3
 $optio node service start
