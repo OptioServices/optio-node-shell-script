@@ -43,13 +43,14 @@ done
 echo "Service registered."
 
 # Force ExecStart to system-safe path (avoids /root path issues)
-$SUDO systemctl edit optio.node.service <<'EOF'
+$SUDO mkdir -p "/etc/systemd/system/$SERVICE_NAME.d"
+$SUDO tee "/etc/systemd/system/$SERVICE_NAME.d/override.conf" >/dev/null <<'EOF'
 [Service]
 ExecStart=
 ExecStart=/usr/local/bin/optio node start
 EOF
 
-# Reload, enable, start, and show status
+# --- Reload, enable, start, and show status ---
 $SUDO systemctl daemon-reload
-$SUDO systemctl enable optio.node.service --now
-$SUDO systemctl status optio.node.service --no-pager -l || true
+$SUDO systemctl enable "$SERVICE_NAME" --now
+$SUDO systemctl status "$SERVICE_NAME" --no-pager -l || true
