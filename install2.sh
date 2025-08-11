@@ -31,9 +31,16 @@ fi
 /usr/local/bin/optio node activate
 
 # --- INSTALL SERVICE (system unit) ---
-if ! $SUDO /usr/local/bin/optio node service install --wait; then
-  echo "Warning: service install reported a non-zero exit code; continuing..." >&2
-fi
+$SUDO /usr/local/bin/optio node service install
+
+# Wait until systemd knows about the service
+echo "Waiting for service registration..."
+SERVICE_NAME="optio.node.service"  # change if actual name differs
+until $SUDO systemctl list-unit-files | grep -q "^${SERVICE_NAME}"; do
+    sleep 1
+done
+
+echo "Service registered."
 
 # Force ExecStart to system-safe path (avoids /root path issues)
 $SUDO systemctl edit optio.node.service <<'EOF'
